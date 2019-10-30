@@ -2,7 +2,7 @@
 CC=g++
 #CFLAGS=-c
 LDFLAGS=-lm
-TARGET=train test
+TARGET=train test 
 
 all: $(TARGET)
 
@@ -17,3 +17,4 @@ test2: src/test_hmm.c
 
 clean:
 	rm -f $(TARGET)
+	rm -f model_0*
