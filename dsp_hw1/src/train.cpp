@@ -91,9 +91,9 @@ int main(int argc, char *argv[])
 
 void Calculate::Baum_Welch()
 {
-    forward();
+    //forward();
     //backward();
-    //calgamma();
+    calgamma();
     //calepos();
     //accugamma();
     //accuepos();
@@ -106,7 +106,9 @@ void Calculate::load_string(string s)
 
 void Calculate::forward()
 {
-    for (int i = 0; i < T_num; i++)for(int j = 0; j < _hmm.state_num; j++)alpha[i][j]=0.0;
+    for (int i = 0; i < T_num; i++)
+        for (int j = 0; j < _hmm.state_num; j++)
+            alpha[i][j] = 0.0;
     al_ter = 0.0;
     //cout << '\n';
 
@@ -142,7 +144,7 @@ void Calculate::forward()
     {
         //cout << alpha[T_num][i] << " ";
         al_ter += alpha[T_num - 1][i];
-        cout << al_ter <<" ";
+        cout << al_ter << " ";
     }
     cout << '\n';
     //cout << "sum: ";
@@ -151,7 +153,11 @@ void Calculate::forward()
 void Calculate::backward()
 {
     for (int tim = T_num - 1; tim >= 0; tim--)
+        for (int sta = 0; sta < _hmm.state_num; sta++)
+            beta[tim][sta] = 0;
+    for (int tim = T_num - 1; tim >= 0; tim--)
     { //time
+        //cout << "tim: "<< tim <<"  ";
         int pocu = -1;
         if (tim != T_num - 1)
             pocu = _s[tim + 1] - 'A';
@@ -163,11 +169,14 @@ void Calculate::backward()
             {
                 for (int pst = 0; pst < _hmm.state_num; pst++)
                 { //post state
-                    beta[tim][sta] += (_hmm.transition[sta][pst] * _hmm.observation[pocu][pst] * beta[tim][pst]);
+                    beta[tim][sta] += (_hmm.transition[sta][pst] * _hmm.observation[pocu][pst] * beta[tim+1][pst]);
                 }
             }
+            //cout <<beta[tim][sta] <<" ";
         }
+        //cout << '\n';
     }
+    
 }
 
 void Calculate::calgamma()
@@ -175,14 +184,21 @@ void Calculate::calgamma()
     for (int tim = 0; tim < T_num; tim++)
     {
         double sum;
+        cout << "t: "<<tim <<"  ";
         for (int sta = 0; sta < N_num; sta++)
         {
+            double temp = alpha[tim][sta] * beta[tim][sta];
+            cout << temp <<" ";
             sum += (alpha[tim][sta] * beta[tim][sta]);
+            
         }
+        //cout << "sum: "<<sum <<" ";
         for (int sta = 0; sta < N_num; sta++)
         {
             gamma[tim][sta] = alpha[tim][sta] * beta[tim][sta] / sum;
+            //cout <<gamma[tim][sta];
         }
+        cout << endl;
     }
 }
 void Calculate::calepos()
