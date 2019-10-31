@@ -1,5 +1,6 @@
 #include "hmm.h"
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <math.h>
 #define T_num 50
@@ -38,6 +39,13 @@ public:
   Calculate(char **argv) {
     _argv = argv;
     loadHMM(&_hmm, argv[2]);
+    for (int i = 0; i < N_num; i++) {
+      tsumgamma[i] = 0;
+      tsumgamma_1[i] = 0;
+      pigamma[i] = 0;
+      for (int j = 0; j < N_num; j++)
+        tsumepos[i][j] = 0;
+    }
   }
   void load_string(string s);
   void output();
@@ -59,6 +67,9 @@ int main(int argc, char *argv[]) {
   // input
   fin.open(argv[3], ios::in);
   if (fin) {
+    // getline(fin, seq);
+    // cal.load_string(seq);
+    // cal.Baum_Welch();
     while (getline(fin, seq)) {
       cal.load_string(seq);
       cal.Baum_Welch();
@@ -145,23 +156,18 @@ void Calculate::backward() {
   for (int tim = T_num - 1; tim >= 0; tim--)
     for (int sta = 0; sta < _hmm.state_num; sta++)
       beta[tim][sta] = 0;
-  for (int tim = T_num - 1; tim >= 0; tim--) { // time
-    // cout << "tim: "<< tim <<"  ";
-    int pocu = -1;
-    if (tim != T_num - 1)
-      pocu = _s[tim + 1] - 'A';
-    for (int sta = 0; sta < _hmm.state_num; sta++) { // state
-      if (tim == T_num - 1)
-        beta[tim][sta] = 1;
-      else {
-        for (int pst = 0; pst < _hmm.state_num; pst++) { // post state
-          beta[tim][sta] += (_hmm.transition[sta][pst] *
-                             _hmm.observation[pocu][pst] * beta[tim + 1][pst]);
-        }
+  for (int sta = 0; sta < N_num; sta++) {
+    beta[T_num - 1][sta] = 1;
+  }
+  for (int tim = T_num - 2; tim >= 0; tim--) { // time
+    for (int i = 0; i < N_num; i++) {
+      double sum = 0;
+      for (int j = 0; j < N_num; j++) {
+        sum += _hmm.transition[i][j] * _hmm.observation[_s[tim + 1] - 'A'][j] *
+               beta[tim + 1][j];
       }
-      // cout <<beta[tim][sta] <<" ";
+      beta[tim][i] = sum;
     }
-    // cout << '\n';
   }
 }
 
@@ -170,7 +176,7 @@ void Calculate::calgamma() {
     for (int sta = 0; sta < _hmm.state_num; sta++)
       gamma[tim][sta] = 0;
   for (int tim = 0; tim < T_num; tim++) {
-    double sum;
+    double sum = 0.0;
     // cout << "t: "<<tim <<"  ";
     for (int sta = 0; sta < N_num; sta++) {
       // double temp = alpha[tim][sta] * beta[tim][sta];
@@ -194,8 +200,8 @@ void Calculate::calepos() {
         epos[tim][sta][pst] = 0;
 
   for (int tim = 0; tim < T_num - 1; tim++) {
-    int pocu = _s[tim + 1];
-    double sum;
+    int pocu = _s[tim + 1] - 'A';
+    double sum = 0.0;
     for (int i = 0; i < N_num; i++) {
       for (int j = 0; j < N_num; j++) {
         sum += alpha[tim][i] * _hmm.transition[i][j] *
@@ -206,7 +212,9 @@ void Calculate::calepos() {
       for (int j = 0; j < N_num; j++) {
         epos[tim][i][j] = alpha[tim][i] * _hmm.transition[i][j] *
                           _hmm.observation[pocu][j] * beta[tim + 1][j] / sum;
+        // epos[T_num][i][j] / gamma[T_num][i]
       }
+      // cout << '\n';
     }
   }
 }
@@ -215,9 +223,9 @@ void Calculate::accugamma() {
     sumgamma[i] = 0;
   for (int i = 0; i < N_num; i++) {
     for (int tim = 0; tim < T_num; tim++) {
-      sumgamma[i] += gamma[tim][i];
+      sumgamma[i] += gamma[tim][i]; // in an ex
       if (tim == T_num - 2)
-        tsumgamma_1[i] += sumgamma[i];
+        tsumgamma_1[i] += sumgamma[i]; // in total ex
     }
     tsumgamma[i] += sumgamma[i];
   }
@@ -232,11 +240,9 @@ void Calculate::accuepos() {
       for (int tim = 0; tim < T_num - 1; tim++) {
         sumepos[i][j] += epos[tim][i][j];
       }
+      tsumepos[i][j] += sumepos[i][j];
     }
   }
-  for (int i = 0; i < N_num; i++)
-    for (int j = 0; j < N_num; j++)
-      tsumepos[i][j] += sumepos[i][j];
 }
 void Calculate::Build_model() { // TODO
 
@@ -256,25 +262,28 @@ void Calculate::output() {
   if (fout) {
     fout << "initial: " << _hmm.state_num << '\n';
     for (int i = 0; i < _hmm.state_num - 1; i++) {
-      fout << _hmm.initial[i] << " ";
+      fout << fixed << setprecision(5) << _hmm.initial[i] << " ";
     }
-    fout << _hmm.initial[_hmm.state_num - 1] << '\n' << '\n';
+    fout << fixed << setprecision(5) << _hmm.initial[_hmm.state_num - 1] << '\n'
+         << '\n';
 
     fout << "transition: " << _hmm.state_num << '\n';
     for (int i = 0; i < _hmm.state_num; i++) {
       for (int j = 0; j < _hmm.state_num - 1; j++) {
-        fout << _hmm.transition[i][j] << " ";
+        fout << fixed << setprecision(5) << _hmm.transition[i][j] << " ";
       }
-      fout << _hmm.transition[i][_hmm.state_num - 1] << '\n';
+      fout << fixed << setprecision(5) << _hmm.transition[i][_hmm.state_num - 1]
+           << '\n';
     }
     fout << '\n';
 
     fout << "observation: " << _hmm.observ_num << '\n';
     for (int i = 0; i < _hmm.observ_num; i++) {
       for (int j = 0; j < _hmm.state_num - 1; j++) {
-        fout << _hmm.observation[i][j] << " ";
+        fout << fixed << setprecision(5) << _hmm.observation[i][j] << " ";
       }
-      fout << _hmm.observation[i][_hmm.state_num - 1] << '\n';
+      fout << fixed << setprecision(5)
+           << _hmm.observation[i][_hmm.state_num - 1] << '\n';
     }
   }
   fout.close();
