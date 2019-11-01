@@ -5,6 +5,7 @@
 #include <math.h>
 #define T_num 50
 #define N_num 6
+#define O_num 6
 #define Sample 10000
 using namespace std;
 
@@ -23,11 +24,13 @@ private:
   double gamma[T_num][N_num];
   double epos[T_num - 1][N_num][N_num];
   double sumgamma[N_num];
+  double sumgamma_o[N_num][O_num];
   double sumepos[N_num][N_num];
   // cross Sample
   double pigamma[N_num];
   double tsumgamma[N_num];
   double tsumgamma_1[N_num];
+  double tsumgamma_o[N_num][O_num];
   double tsumepos[N_num][N_num];
 
   double al_ter;
@@ -39,12 +42,16 @@ public:
   Calculate(char **argv) {
     _argv = argv;
     loadHMM(&_hmm, argv[2]);
+  }
+  void initial() {
     for (int i = 0; i < N_num; i++) {
       tsumgamma[i] = 0;
       tsumgamma_1[i] = 0;
       pigamma[i] = 0;
-      for (int j = 0; j < N_num; j++)
+      for (int j = 0; j < N_num; j++) {
         tsumepos[i][j] = 0;
+        sumgamma_o[i][j] = 0;
+      }
     }
   }
   void load_string(string s);
@@ -56,7 +63,7 @@ public:
 int main(int argc, char *argv[]) {
 
   Calculate cal(argv);
-  int iter = atoi(argv[1]);
+  // int iter = atoi(argv[1]);
   // cout  <<  iter << endl;
 
   // dumpHMM( stdout, &hmm_initial );
@@ -65,32 +72,36 @@ int main(int argc, char *argv[]) {
   // double alpha[T_num][N_num];
   // double beta[T_num][N_num];
   // input
-  fin.open(argv[3], ios::in);
-  if (fin) {
-    // getline(fin, seq);
-    // cal.load_string(seq);
-    // cal.Baum_Welch();
-    while (getline(fin, seq)) {
-      cal.load_string(seq);
-      cal.Baum_Welch();
+  for (int iter = 0; iter < atoi(argv[1]); iter++) {
+    fin.open(argv[3], ios::in);
+
+    if (fin) {
+      // getline(fin, seq);
+      // cal.load_string(seq);
+      // cal.Baum_Welch();
+      cal.initial();
+      while (getline(fin, seq)) {
+        cal.load_string(seq);
+        cal.Baum_Welch();
+      }
+      cal.Build_model();
+      // for(int i = 0; i <T_num;i++)
+      // cout << seq[i] << " ";
+      // cout << '\n';
+
+      // double a = cal_alpha(seq,hmm_initial);
+      // cout << "a: " << a;
+      /*while (getline(fin, seq))
+      {
+
+          cal_alpha(seq,hmm_initial);
+          //cout << seq[0];
+          //cout << '\n';
+      }*/
     }
-    cal.Build_model();
-    // for(int i = 0; i <T_num;i++)
-    // cout << seq[i] << " ";
-    // cout << '\n';
 
-    // double a = cal_alpha(seq,hmm_initial);
-    // cout << "a: " << a;
-    /*while (getline(fin, seq))
-    {
-
-        cal_alpha(seq,hmm_initial);
-        //cout << seq[0];
-        //cout << '\n';
-    }*/
+    fin.close();
   }
-  fin.close();
-
   cal.output();
 
   return 0;
@@ -194,7 +205,7 @@ void Calculate::calgamma() {
   }
 }
 void Calculate::calepos() {
-  for (int tim = 0; tim <= T_num - 1; tim++)
+  for (int tim = 0; tim < T_num - 1; tim++)
     for (int sta = 0; sta < _hmm.state_num; sta++)
       for (int pst = 0; pst < _hmm.state_num; pst++)
         epos[tim][sta][pst] = 0;
@@ -221,12 +232,22 @@ void Calculate::calepos() {
 void Calculate::accugamma() {
   for (int i = 0; i < N_num; i++)
     sumgamma[i] = 0;
+  /*for (int i = 0; i < N_num; i++)
+    for (int o = 0; o < O_num; o++)
+      sumgamma_o[i][o] = 0;
+  */
   for (int i = 0; i < N_num; i++) {
     for (int tim = 0; tim < T_num; tim++) {
       sumgamma[i] += gamma[tim][i]; // in an ex
+      sumgamma_o[i][_s[tim] - 'A'] += gamma[tim][i];
       if (tim == T_num - 2)
         tsumgamma_1[i] += sumgamma[i]; // in total ex
+      /*if (tim == T_num - 1) {
+        for (int j = 0; j < O_num; j++)
+          tsumgamma_o[i][j] += sumgamma_o[i][j];
+      }*/
     }
+
     tsumgamma[i] += sumgamma[i];
   }
 }
@@ -255,7 +276,7 @@ void Calculate::Build_model() { // TODO
 
   for (int k = 0; k < _hmm.observ_num; k++) // b
     for (int i = 0; i < _hmm.state_num; i++)
-      _hmm.observation[k][i] = tsumgamma[i];
+      _hmm.observation[k][i] = sumgamma_o[i][k] / tsumgamma[i];
 }
 void Calculate::output() {
   ofstream fout(_argv[4]);

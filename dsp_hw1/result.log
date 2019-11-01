@@ -1,0 +1,10 @@
+iter = 1:
+Accuracy: 0.766
+iter = 10:
+Accuracy: 0.5408
+iter = 50:
+Accuracy: 0.8228
+iter = 100:
+Accuracy: 0.81
+iter = 125:
+Accuracy: 0.8504
