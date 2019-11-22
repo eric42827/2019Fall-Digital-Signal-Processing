@@ -7,7 +7,7 @@ TARGET=train test
 all: $(TARGET)
 
 train: src/train.cpp
-	$(CC) -o $@ $^  $(LDFLAGS) -Iinc
+	$(CC) -o $@ $^  -g $(LDFLAGS) -Iinc
 
 test: src/test.cpp
 	$(CC) -o $@ $^  $(LDFLAGS) -Iinc
